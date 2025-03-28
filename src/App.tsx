@@ -1,67 +1,63 @@
 import React, { useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import AdminLayout from "./pages/AdminLayout";
 import Profile from "./pages/Profile";
-import PolicyPage from './components/PolicyPage'; // Импортируем PolicyPage
-import OfferPage from './components/OfferPage'; // Импортируем OfferPage
+import AuthPage from './pages/AuthPage';
+import StoresPage from './pages/StoresPage';
+import AdministratorsPage from './pages/AdministratorsPage';
+import AssortmentPage from './pages/AssortmentPage';
+import PolicyPage from './components/PolicyPage';
+import OfferPage from './components/OfferPage';
+import OrdersPage from './pages/OrdersPage';
+import DeliveryPage from './pages/DeliveryPage'; // Добавляем импорт страницы DeliveryPage
 import ErrorBoundary from "./utils/errorBoundary/ErrorBoundary";
 
 const App: React.FC = () => {
-    const [isAuthenticated, setIsAuthenticated] = useState(true);
-
-    const handleAuthAction = () => {
-        setIsAuthenticated(!isAuthenticated);
-    };
-
-    console.log('App.tsx: Rendering routes');
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const location = useLocation();
 
     return (
         <ErrorBoundary>
             <Routes>
                 <Route
+                    path="/login"
+                    element={
+                        isAuthenticated ? (
+                            <Navigate to={location.state?.from || "/"} replace />
+                        ) : (
+                            <AuthPage setIsAuthenticated={setIsAuthenticated} />
+                        )
+                    }
+                />
+                <Route
                     path="/"
                     element={
-                        <AdminLayout
-                            isAuthenticated={isAuthenticated}
-                            onAuthAction={handleAuthAction}
-                        />
+                        isAuthenticated ? (
+                            <AdminLayout
+                                isAuthenticated={isAuthenticated}
+                                onAuthAction={() => setIsAuthenticated(false)}
+                            />
+                        ) : (
+                            <Navigate
+                                to="/login"
+                                replace
+                                state={{ from: location.pathname }}
+                            />
+                        )
                     }
                 >
+                    <Route index element={<Navigate to="/stores" replace />} />
                     <Route path="profile" element={<Profile />} />
-                    <Route path="stores" element={<div>Stores Page</div>} />
-                    <Route path="administrators" element={<div>Administrators Page</div>} />
-                    <Route index element={<div>Welcome to Admin Dashboard</div>} />
+                    <Route path="stores" element={<StoresPage />} />
+                    <Route path="administrators" element={<AdministratorsPage />} />
+                    <Route path="assortment" element={<AssortmentPage />} />
+                    <Route path="orders" element={<OrdersPage />} />
+                    <Route path="delivery" element={<DeliveryPage />} /> {/* Добавляем маршрут для страницы Доставка */}
                 </Route>
 
-                {/* Добавляем маршруты для PolicyPage и OfferPage */}
-                <Route
-                    path="/policy"
-                    element={
-                        <>
-                            {console.log('Rendering PolicyPage for path /policy')}
-                            <PolicyPage />
-                        </>
-                    }
-                />
-                <Route
-                    path="/offer"
-                    element={
-                        <>
-                            {console.log('Rendering OfferPage for path /offer')}
-                            <OfferPage />
-                        </>
-                    }
-                />
-
-                {/* 404 Route */}
-                <Route path="*" element={
-                    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-                        <div className="text-center">
-                            <h1 className="text-4xl font-bold text-gray-800 mb-4">404</h1>
-                            <p className="text-gray-600">Page not found</p>
-                        </div>
-                    </div>
-                } />
+                <Route path="/policy" element={<PolicyPage />} />
+                <Route path="/offer" element={<OfferPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </ErrorBoundary>
     );

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './AdminSubHeader.css';
 
-export type AdminSection = 'stores' | 'administrators' | 'profile';
+// Обновляем тип AdminSection, добавляя 'delivery'
+export type AdminSection = 'stores' | 'administrators' | 'profile' | 'assortment' | 'orders' | 'delivery';
 
 interface AdminSubHeaderProps {
     activeSection: AdminSection;
@@ -10,18 +11,28 @@ interface AdminSubHeaderProps {
 }
 
 const AdminSubHeader: React.FC<AdminSubHeaderProps> = ({
-    activeSection,
-    onSectionChange,
-}) => {
+                                                           activeSection,
+                                                           onSectionChange,
+                                                       }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
     const sectionRefs = useRef<{ [key in AdminSection]?: HTMLDivElement }>({});
 
     const sections: { id: AdminSection; label: string; path: string }[] = [
         { id: 'stores', label: 'Магазины', path: '/stores' },
         { id: 'administrators', label: 'Администраторы', path: '/administrators' },
+        { id: 'assortment', label: 'Ассортимент', path: '/assortment' },
+        { id: 'orders', label: 'Заказы', path: '/orders' },
+        { id: 'delivery', label: 'Доставка', path: '/delivery' }, // Добавляем вкладку "Доставка"
         { id: 'profile', label: 'Профиль', path: '/profile' },
     ];
+
+    useEffect(() => {
+        const currentPath = location.pathname.substring(1) || 'stores';
+        const section = sections.find(s => s.path.substring(1) === currentPath)?.id || 'stores';
+        onSectionChange(section);
+    }, [location.pathname]);
 
     useEffect(() => {
         const activeElement = sectionRefs.current[activeSection];
@@ -54,10 +65,10 @@ const AdminSubHeader: React.FC<AdminSubHeaderProps> = ({
                         {label}
                     </div>
                 ))}
-                <div 
+                <div
                     className="active-indicator"
                     style={{
-                        transform: `translateX(${indicatorStyle.left}px)`,
+                        left: `${indicatorStyle.left}px`,
                         width: `${indicatorStyle.width}px`,
                     }}
                 />
