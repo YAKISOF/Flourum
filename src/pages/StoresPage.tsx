@@ -8,6 +8,7 @@ interface Store {
   businessPhone: string;
   telegram: string;
   whatsapp: string;
+  addresses: string[];
   logo?: string;
   textLogo?: string;
 }
@@ -25,9 +26,11 @@ const StoresPage: React.FC = () => {
     businessPhone: '',
     telegram: '',
     whatsapp: '',
+    addresses: [],
     logo: '',
     textLogo: '',
   });
+  const [addressInputs, setAddressInputs] = useState<string[]>(['']);
   const [currentStep, setCurrentStep] = useState<FormStep>('step1');
   const [isTextLogoActive, setIsTextLogoActive] = useState(false);
   const [isFileLogoActive, setIsFileLogoActive] = useState(false);
@@ -35,8 +38,8 @@ const StoresPage: React.FC = () => {
 
   const validateInput = (name: string, value: string | undefined) => {
     if (value === undefined || value === '') {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-      return true;
+      setErrors(prev => ({ ...prev, [name]: 'Поле обязательно для заполнения' }));
+      return false;
     }
 
     let error = '';
@@ -60,7 +63,6 @@ const StoresPage: React.FC = () => {
         if (!/^\+?\d+$/.test(value)) {
           error = 'Только цифры, может начинаться с +';
         } else {
-          // Count digits excluding the leading +
           const digitCount = value.startsWith('+') ? value.length - 1 : value.length;
           if (digitCount < 10 || digitCount > 12) {
             error = 'Номер телефона должен содержать 10–12 цифр';
@@ -85,6 +87,34 @@ const StoresPage: React.FC = () => {
     return error === '';
   };
 
+  const validateAddresses = (addresses: string[]) => {
+    let isValid = true;
+    const newErrors: { [key: string]: string } = {};
+
+    addresses.forEach((address, index) => {
+      if (!address) {
+        newErrors[`address${index}`] = 'Поле обязательно для заполнения';
+        isValid = false;
+      } else {
+        newErrors[`address${index}`] = '';
+      }
+    });
+
+    setErrors(prev => ({ ...prev, ...newErrors }));
+    return isValid;
+  };
+
+  const handleAddressInputChange = (index: number, value: string) => {
+    const newAddressInputs = [...addressInputs];
+    newAddressInputs[index] = value;
+    setAddressInputs(newAddressInputs);
+    validateAddresses(newAddressInputs);
+  };
+
+  const handleAddAddress = () => {
+    setAddressInputs(prev => [...prev, '']);
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
@@ -100,7 +130,7 @@ const StoresPage: React.FC = () => {
         }
         cleanedValue = cleanedValue.replace(/[^#0-9A-Fa-f]/g, '');
         if (cleanedValue.length > 9) {
-          cleanedValue = cleanedValue.slice(0, 9); // #FFFFFFFF (8 chars + #)
+          cleanedValue = cleanedValue.slice(0, 9);
         }
         break;
       case 'inn':
@@ -149,25 +179,35 @@ const StoresPage: React.FC = () => {
 
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
-    const fieldsToValidate = ['name', 'color', 'inn'];
+    const fieldsToValidate = ['name', 'color', 'inn'] as const;
     let isValid = true;
     fieldsToValidate.forEach(field => {
-      if (!validateInput(field, formData[field as keyof Store])) {
-        isValid = false;
+      const value = formData[field];
+      if (typeof value === 'string' || value === undefined) {
+        if (!validateInput(field, value)) {
+          isValid = false;
+        }
       }
     });
+    if (!validateAddresses(addressInputs)) {
+      isValid = false;
+    }
     if (isValid) {
+      setFormData(prev => ({ ...prev, addresses: addressInputs }));
       setCurrentStep('step2');
     }
   };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    const fieldsToValidate = ['businessPhone', 'telegram', 'whatsapp'];
+    const fieldsToValidate = ['businessPhone', 'telegram', 'whatsapp'] as const;
     let isValid = true;
     fieldsToValidate.forEach(field => {
-      if (!validateInput(field, formData[field as keyof Store])) {
-        isValid = false;
+      const value = formData[field];
+      if (typeof value === 'string' || value === undefined) {
+        if (!validateInput(field, value)) {
+          isValid = false;
+        }
       }
     });
     if (isValid) {
@@ -179,6 +219,7 @@ const StoresPage: React.FC = () => {
   const handleEdit = () => {
     if (store) {
       setFormData(store);
+      setAddressInputs(store.addresses.length > 0 ? store.addresses : ['']);
       setCurrentState('editing');
       setCurrentStep('step1');
     }
@@ -186,13 +227,19 @@ const StoresPage: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    const fieldsToValidate = ['name', 'color', 'inn', 'businessPhone', 'telegram', 'whatsapp'];
+    const fieldsToValidate = ['name', 'color', 'inn', 'businessPhone', 'telegram', 'whatsapp'] as const;
     let isValid = true;
     fieldsToValidate.forEach(field => {
-      if (!validateInput(field, formData[field as keyof Store])) {
-        isValid = false;
+      const value = formData[field];
+      if (typeof value === 'string' || value === undefined) {
+        if (!validateInput(field, value)) {
+          isValid = false;
+        }
       }
     });
+    if (!validateAddresses(formData.addresses)) {
+      isValid = false;
+    }
     if (isValid) {
       setStore(formData);
       setCurrentState('viewing');
@@ -209,9 +256,11 @@ const StoresPage: React.FC = () => {
       businessPhone: '',
       telegram: '',
       whatsapp: '',
+      addresses: [],
       logo: '',
       textLogo: '',
     });
+    setAddressInputs(['']);
     setErrors({});
   };
 
@@ -260,6 +309,32 @@ const StoresPage: React.FC = () => {
             />
             {errors.inn && <p className={styles.error}>{errors.inn}</p>}
           </div>
+
+          {addressInputs.map((address, index) => (
+              <div key={index} className={styles.addressGroup}>
+                <input
+                    type="text"
+                    name={`address${index}`}
+                    placeholder="Адрес точки продаж"
+                    value={address}
+                    onChange={(e) => handleAddressInputChange(index, e.target.value)}
+                    className={errors[`address${index}`] ? styles.inputError : ''}
+                    required
+                />
+                {errors[`address${index}`] && <p className={styles.error}>{errors[`address${index}`]}</p>}
+                {index === addressInputs.length - 1 && (
+                    <button
+                        type="button"
+                        onClick={handleAddAddress}
+                        className={styles.addAddressButton}
+                    >
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 5V19M5 12H19" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                )}
+              </div>
+          ))}
 
           <div className={styles.buttonGroup}>
             <button
