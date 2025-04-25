@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import styles from './AssortmentPage.module.css';
 import plussIcon from '../assets/pluss.svg';
 import shopIcon from '../assets/shop.svg';
+import trashIcon from '../assets/trashW.svg';
 
 interface Category {
   id: string;
   name: string;
-  products?: string; // Добавляем поле для товаров
+  products?: string;
   image?: string;
 }
 
@@ -18,6 +19,7 @@ interface Product {
   category: string;
   price: number;
   images?: string[];
+  parameters?: { name: string; value: string }[];
 }
 
 interface NewProductForm {
@@ -33,18 +35,26 @@ interface NewProductForm {
 
 interface NewCategoryForm {
   name?: string;
-  products?: string; // Добавляем поле для товаров
+  products?: string;
   image?: string;
+}
+
+interface Parameter {
+  name: string;
+  value: string;
 }
 
 export const AssortmentPage: React.FC = () => {
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [isEditingProduct, setIsEditingProduct] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [newProduct, setNewProduct] = useState<NewProductForm>({ inStock: true });
   const [newCategory, setNewCategory] = useState<NewCategoryForm>({});
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [parameters, setParameters] = useState<Parameter[]>([]);
+  const [newParameter, setNewParameter] = useState<Parameter>({ name: '', value: '' });
   const [error, setError] = useState<string | null>(null);
 
   const handleCategoryInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,7 +64,7 @@ export const AssortmentPage: React.FC = () => {
 
   const handleCategoryImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedImages([e.target.files[0]]); // Для категории достаточно одного фото
+      setSelectedImages([e.target.files[0]]);
     }
   };
 
@@ -67,7 +77,7 @@ export const AssortmentPage: React.FC = () => {
     const category: Category = {
       id: Date.now().toString(),
       name: newCategory.name,
-      products: newCategory.products || '', // Сохраняем товары
+      products: newCategory.products || '',
       image: selectedImages.length > 0 ? URL.createObjectURL(selectedImages[0]) : undefined,
     };
 
@@ -93,6 +103,26 @@ export const AssortmentPage: React.FC = () => {
     } else {
       setNewProduct(prev => ({ ...prev, [name]: value }));
     }
+  };
+
+  const handleParameterInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewParameter(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddParameter = () => {
+    if (!newParameter.name || !newParameter.value) {
+      setError('Ошибка при добавлении параметра. Заполните название и значение');
+      return;
+    }
+
+    setParameters(prev => [...prev, { name: newParameter.name, value: newParameter.value }]);
+    setNewParameter({ name: '', value: '' });
+    setError(null);
+  };
+
+  const handleDeleteParameter = (index: number) => {
+    setParameters(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleInStockToggle = () => {
@@ -136,27 +166,56 @@ export const AssortmentPage: React.FC = () => {
     }
 
     const product: Product = {
-      id: Date.now().toString(),
+      id: isEditingProduct && newProduct.id ? newProduct.id : Date.now().toString(),
       name: newProduct.name,
       description: newProduct.description || '',
       composition: newProduct.composition || '',
       category: newProduct.category || '',
       price: priceValue,
       images: selectedImages.map(file => URL.createObjectURL(file)),
+      parameters: parameters,
     };
 
-    setProducts([...products, product]);
+    if (isEditingProduct) {
+      setProducts(products.map(p => (p.id === product.id ? product : p)));
+    } else {
+      setProducts([...products, product]);
+    }
+
     setNewProduct({ inStock: true });
     setSelectedImages([]);
+    setParameters([]);
+    setNewParameter({ name: '', value: '' });
     setIsCreatingProduct(false);
+    setIsEditingProduct(false);
     setError(null);
   };
 
   const handleDelete = () => {
     setIsCreatingProduct(false);
+    setIsEditingProduct(false);
     setNewProduct({ inStock: true });
     setSelectedImages([]);
+    setParameters([]);
+    setNewParameter({ name: '', value: '' });
     setError(null);
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setNewProduct({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      composition: product.composition,
+      category: product.category,
+      price: product.price.toString(),
+      images: product.images,
+      inStock: true,
+    });
+    setParameters(product.parameters || []);
+    setSelectedImages([]);
+    setIsEditingProduct(true);
+    setIsCreatingProduct(true);
   };
 
   if (isCreatingCategory) {
@@ -230,89 +289,131 @@ export const AssortmentPage: React.FC = () => {
   if (isCreatingProduct) {
     return (
         <div className={styles.container}>
-          <h2 className={styles.pageTitle}>Создание товара</h2>
+          <h2 className={styles.pageTitle}>
+            {isEditingProduct ? 'Редактирование товара' : 'Создание товара'}
+          </h2>
           <div className={styles.form}>
-            <h3 className={styles.formTitle}>Новый товар</h3>
-            <input
-                type="text"
-                name="name"
-                placeholder="Название"
-                value={newProduct.name || ''}
-                onChange={handleInputChange}
-                className={styles.input}
-            />
-            <textarea
-                name="description"
-                placeholder="Описание"
-                value={newProduct.description || ''}
-                onChange={handleInputChange}
-                className={styles.input}
-            />
-            <input
-                type="text"
-                name="composition"
-                placeholder="Состав"
-                value={newProduct.composition || ''}
-                onChange={handleInputChange}
-                className={styles.input}
-            />
-            <input
-                type="text"
-                name="category"
-                placeholder="Категория"
-                value={newProduct.category || ''}
-                onChange={handleInputChange}
-                className={styles.input}
-            />
-            <input
-                type="text"
-                name="price"
-                placeholder="Цена"
-                value={newProduct.price || ''}
-                onChange={handleInputChange}
-                className={styles.input}
-            />
-            <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageUpload}
-                style={{ display: 'none' }}
-                id="imageUpload"
-            />
-            {selectedImages.length > 0 && (
-                <div className={styles.previewImages}>
-                  {selectedImages.map((image, index) => (
-                      <div key={index} className={styles.previewImage}>
-                        <img src={URL.createObjectURL(image)} alt={`Preview ${index}`} />
-                        <button
-                            onClick={() => handleRemoveImage(index)}
-                            className={styles.removeImageButton}
-                        >
-                          ×
-                        </button>
-                      </div>
-                  ))}
-                </div>
-            )}
-            <div className={styles.buttonContainer}>
-              <button
-                  onClick={handleInStockToggle}
-                  className={styles.inStockButton} // Убираем динамическое добавление класса .active
-              >
-                {newProduct.inStock ? 'Товар в наличии' : 'Товар скрыт'}
-              </button>
-              <label htmlFor="imageUpload" className={styles.uploadButton}>
-                Загрузите до 5 фото
-              </label>
-              <div className={styles.actionButtons}>
-                <button onClick={handleSave} className={styles.saveButton}>
-                  Сохранить
-                </button>
-                <button onClick={handleDelete} className={styles.deleteButton}>
-                  Удалить
-                </button>
+            <h3 className={styles.formTitle}>
+              {isEditingProduct ? 'Редактировать товар' : 'Новый товар'}
+            </h3>
+            <div className={styles.formColumns}>
+              {/* Left Column: Form Fields */}
+              <div className={styles.leftColumn}>
+                <input
+                    type="text"
+                    name="name"
+                    placeholder="Название"
+                    value={newProduct.name || ''}
+                    onChange={handleInputChange}
+                    className={styles.inputName}
+                />
+                <textarea
+                    name="description"
+                    placeholder="Описание"
+                    value={newProduct.description || ''}
+                    onChange={handleInputChange}
+                    className={styles.inputDescription}
+                />
+                <textarea
+                    name="composition"
+                    placeholder="Состав"
+                    value={newProduct.composition || ''}
+                    onChange={handleInputChange}
+                    className={styles.inputComposition}
+                />
+                <input
+                    type="text"
+                    name="category"
+                    placeholder="Категория"
+                    value={newProduct.category || ''}
+                    onChange={handleInputChange}
+                    className={styles.input}
+                />
+                <input
+                    type="text"
+                    name="price"
+                    placeholder="Цена"
+                    value={newProduct.price || ''}
+                    onChange={handleInputChange}
+                    className={styles.input}
+                />
               </div>
+              {/* Right Column: In-Stock, Image Upload, Parameters */}
+              <div className={styles.rightColumn}>
+                <button
+                    onClick={handleInStockToggle}
+                    className={styles.inStockButton}
+                >
+                  {newProduct.inStock ? 'Товар в наличии' : 'Товар скрыт'}
+                </button>
+                <label htmlFor="imageUpload" className={styles.uploadButton}>
+                  Загрузите до 5 фото
+                </label>
+                <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    style={{ display: 'none' }}
+                    id="imageUpload"
+                />
+                {selectedImages.length > 0 && (
+                    <div className={styles.previewImages}>
+                      {selectedImages.map((image, index) => (
+                          <div key={index} className={styles.previewImage}>
+                            <img src={URL.createObjectURL(image)} alt={`Preview ${index}`} />
+                            <button
+                                onClick={() => handleRemoveImage(index)}
+                                className={styles.removeImageButton}
+                            >
+                              ×
+                            </button>
+                          </div>
+                      ))}
+                    </div>
+                )}
+                <div className={styles.parameterContainer}>
+                  <div className={styles.parameterFieldsRow}>
+                    <input
+                        type="text"
+                        name="name"
+                        placeholder="Название"
+                        value={newParameter.name}
+                        onChange={handleParameterInputChange}
+                        className={styles.parameterNameInput}
+                    />
+                    <input
+                        type="text"
+                        name="value"
+                        placeholder="Значение"
+                        value={newParameter.value}
+                        onChange={handleParameterInputChange}
+                        className={styles.parameterValueInput}
+                    />
+                  </div>
+                  <div className={styles.parameterButtonsRow}>
+                    <button onClick={handleAddParameter} className={styles.addParamsButton}>
+                      Добавить параметры товара
+                    </button>
+                    <button
+                        onClick={() => handleDeleteParameter(parameters.length - 1)}
+                        className={styles.deleteParamButton}
+                        disabled={parameters.length === 0}
+                    >
+                      <img src={trashIcon} alt="Delete parameter" className={styles.trashIcon} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Action Buttons (Centered at the Bottom) */}
+            <div className={styles.actionButtons}>
+              <button onClick={handleSave} className={styles.saveButton}>
+                Сохранить
+              </button>
+              <button onClick={handleDelete} className={styles.deleteButton}>
+                Удалить
+              </button>
             </div>
             {error && (
                 <div className={styles.errorMessage}>
@@ -399,9 +500,16 @@ export const AssortmentPage: React.FC = () => {
                         )}
                       </div>
                       <div className={styles.productInfo}>
-                        <p className={styles.price}>{product.price} ₽</p>
-                        <p className={styles.name}>{product.name}</p>
-                        <button className={styles.editButton}>Редактировать</button>
+                        <div className={styles.textInfo}>
+                          <p className={styles.price}>{product.price} ₽</p>
+                          <p className={styles.name}>{product.name}</p>
+                        </div>
+                        <button
+                            onClick={() => handleEditProduct(product)}
+                            className={styles.editButton}
+                        >
+                          Редактировать
+                        </button>
                       </div>
                     </div>
                 ))}
