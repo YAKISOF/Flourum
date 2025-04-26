@@ -227,6 +227,8 @@
   padding: 24px;
   background: white;
   border-radius: 12px;
+  align-items: center; /* Center the form inputs */
+  min-height: 312px; /* Ensure consistent height */
 }
 
 .formTitle {
